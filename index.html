@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notificação</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f3f3f3;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            user-select: none;
+        }
+        .dialog-container {
+            background: #ffffff;
+            width: 100%;
+            max-width: 420px;
+            border: 1px solid #acacac;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .dialog-body {
+            padding: 24px 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            min-height: 80px;
+        }
+        .dialog-icon {
+            font-size: 32px;
+            line-height: 1;
+        }
+        .dialog-text {
+            font-size: 14px;
+            line-height: 1.4;
+            color: #222;
+            word-break: break-word;
+            padding-top: 4px;
+        }
+        .dialog-footer {
+            background-color: #f3f3f3;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            border-top: 1px solid #e1e1e1;
+        }
+        button {
+            padding: 6px 20px;
+            font-size: 13px;
+            border-radius: 4px;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.1s ease;
+            min-width: 80px;
+        }
+        button.btn-primary {
+            background-color: #0078d4;
+            color: white;
+            border: 1px solid #0078d4;
+        }
+        button.btn-primary:hover {
+            background-color: #106ebe;
+            border-color: #106ebe;
+        }
+        button.btn-secondary {
+            background-color: #ffffff;
+            color: #333333;
+            border: 1px solid #cccccc;
+        }
+        button.btn-secondary:hover {
+            background-color: #f3f3f3;
+            border-color: #999999;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dialog-container">
+        <div class="dialog-body">
+            <div id="icon" class="dialog-icon">ℹ️</div>
+            <div id="message" class="dialog-text">Carregando...</div>
+        </div>
+        <div id="footer" class="dialog-footer">
+            <!-- Botões injetados por JS -->
+        </div>
+    </div>
+
+    <script>
+        // Captura os parâmetros da URL
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                text: params.get('text') || 'Sem texto definido.',
+                type: params.get('type') || 'texto'
+            };
+        }
+
+        // Salva a resposta no LocalStorage dentro do namespace 'aviso'
+        function saveAnswer(value) {
+            let avisoData = localStorage.getItem('aviso');
+            try {
+                avisoData = avisoData ? JSON.parse(avisoData) : {};
+            } catch (e) {
+                avisoData = {};
+            }
+
+            avisoData.answer = value;
+            localStorage.setItem('aviso', JSON.stringify(avisoData));
+        }
+
+        // Executa ao clicar em qualquer botão: Salva e força o fechamento
+        function handleAction(value) {
+            saveAnswer(value);
+            
+            // 1. Se estiver rodando dentro do ambiente NW.js, usa o fechamento nativo de janela
+            if (typeof nw !== 'undefined' && nw.Window) {
+                nw.Window.get().close();
+                return;
+            }
+
+            // 2. Método padrão para navegadores comuns
+            window.close();
+
+            // 3. Fallback agressivo: se o navegador bloquear o window.close(), 
+            // ele limpa a tela redirecionando imediatamente para fechar visualmente.
+            setTimeout(() => {
+                window.location.href = "about:blank";
+            }, 50);
+        }
+
+        // Renderiza a tela baseado no tipo de alerta
+        function initDialog() {
+            const { text, type } = getQueryParams();
+            const messageEl = document.getElementById('message');
+            const iconEl = document.getElementById('icon');
+            const footerEl = document.getElementById('footer');
+
+            messageEl.textContent = text;
+
+            switch (type.toLowerCase()) {
+                case 'confirma':
+                case 'pergunta':
+                    iconEl.textContent = '❓';
+                    footerEl.innerHTML = `
+                        <button class="btn-secondary" onclick="handleAction(false)">Cancelar</button>
+                        <button class="btn-primary" onclick="handleAction(true)">Confirmar</button>
+                    `;
+                    break;
+                case 'texto':
+                default:
+                    iconEl.textContent = 'ℹ️';
+                    footerEl.innerHTML = `
+                        <button class="btn-primary" onclick="handleAction(true)">OK</button>
+                    `;
+                    break;
+            }
+        }
+
+        window.onload = initDialog;
+    </script>
+</body>
+</html>
